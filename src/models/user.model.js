@@ -12,6 +12,7 @@ const userSchema = new Schema(
             trim: true,
             index: true,
         },
+
         email: {
             type: String,
             required: true,
@@ -19,29 +20,35 @@ const userSchema = new Schema(
             lowercase: true,
             trim: true,
         },
+
         fullName: {
             type: String,
             required: true,
             trim: true,
             index: true,
         },
+
         avatar: {
             type: String, //  URL
             required: true,
         },
+
         coverImage: {
             type: String, //CLOUDINARY URL
         },
+
         watchHistory: [
             {
                 type: Schema.Types.ObjectId,
                 ref: 'Video',
             },
         ],
+
         password: {
             type: String,
             required: [true, 'Password is required'],
         },
+        
         refreshToken: {
             type: String,
         },
