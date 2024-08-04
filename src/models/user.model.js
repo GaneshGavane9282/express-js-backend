@@ -48,7 +48,7 @@ const userSchema = new Schema(
             type: String,
             required: [true, 'Password is required'],
         },
-        
+
         refreshToken: {
             type: String,
         },
@@ -72,9 +72,6 @@ userSchema.methods.generateAccessToken = async function () {
     return jsonwebtoken.sign(
         {
             _id: this._id,
-            email: this.email,
-            fullName: this.fullName,
-            userName: this.userName,
         },
         process.env.ACCESS_TOKEN_SECRET,
         {
