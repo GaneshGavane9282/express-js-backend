@@ -91,6 +91,8 @@ export const loginUser = asyncHandler(async (req, res) => {
         throw new ApiError(401, 'Incorrect credentials');
     }
 
+    if (Object.keys(req.cookies).length !== 0) throw new ApiError(400, 'User already logged in');
+
     const { accessToken, refreshToken } = await generateAccessRefreshTokens(foundUser._id);
 
     const { password: _, refreshToken: __, ...loggedInUser } = foundUser.toObject();
@@ -175,3 +177,86 @@ export const refreshAccessToken = asyncHandler(async (req, res) => {
         throw new ApiError(401, error?.message || 'Invalid refresh token');
     }
 });
+
+export const changePassword = asyncHandler(async (req, res) => {
+    const { oldPassword, newPassword } = req.body || {};
+
+    const foundUser = await User.findById(req?.user?._id);
+
+    const isValidPassword = await foundUser.isPasswordCorrect(oldPassword);
+
+    if (!isValidPassword) throw new ApiError(400, 'Invalid Password');
+
+    foundUser.password = newPassword;
+    const isPasswordChanged = await foundUser.save({ validateBeforeSave: false });
+
+    res.status(200).json(new ApiResponse(201, {}, 'Password Changed Successfully'));
+});
+
+export const getCurrentUser = asyncHandler(async (req, res) => {
+    res.status(200).json(new ApiResponse(200, req?.user, 'Current User fetched Successfully'));
+});
+
+export const updateDetails = asyncHandler(async (req, res) => {
+    const { fullName, email } = req.body || {};
+
+    if (!fullName || !email) throw new ApiError(400, 'All fields are required');
+
+    const updatedUser = await User.findByIdAndUpdate(
+        req?.user?._id,
+        {
+            $set: {
+                fullName,
+                email,
+            },
+        },
+        { new: true } // Return the updated document
+    );
+
+    // Select fields to exclude sensitive information
+    const foundUser = await User.findById(updatedUser._id).select('-password -refreshToken');
+
+    res.status(200).json(
+        new ApiResponse(
+            201,
+            {
+                user: foundUser,
+            },
+            'Data Updated Successfully'
+        )
+    );
+});
+
+const updateAvatarCoverImage = (profileType) =>
+    asyncHandler(async (req, res) => {
+        const fileLocalPath = req.file?.path || {};
+
+        if (!fileLocalPath) throw new ApiError(400, `${profileType} file is missing`);
+
+        const fileUpload = await uploadOnCloudinary(fileLocalPath);
+
+        if (!fileUpload?.url) throw new ApiError(400, `Error while uploading on ${profileType}`);
+
+        await User.findByIdAndUpdate(
+            req?.user?._id,
+            {
+                $set: {
+                    [profileType]: fileUpload?.url,
+                },
+            },
+            {
+                new: true,
+            }
+        );
+
+        const updatedFileUrl = await User.findById(req?.user?._id).select(profileType);
+
+        res.status(200).json(
+            new ApiResponse(200, { [profileType]: updatedFileUrl }, `${profileType} updated successfully`)
+        );
+    });
+
+
+export const updateAvatar = updateAvatarCoverImage('avatar');
+
+export const updateCover = updateAvatarCoverImage('coverImage');
