@@ -259,3 +259,68 @@ const updateAvatarCoverImage = (profileType) =>
 export const updateAvatar = updateAvatarCoverImage('avatar');
 
 export const updateCover = updateAvatarCoverImage('coverImage');
+
+export const getUserChannelProfile = asyncHandler(async (req, res) => {
+    const { userName } = req.params || {};
+
+    if (!userName?.trim()) throw new ApiError(400, 'User name is missing');
+
+    const channels = await User.aggregate([
+        {
+            $match: {
+                userName: userName?.toLowerCase(),
+            },
+        },
+        {
+            $lookup: {
+                from: 'subscriptions',
+                localField: '_id',
+                foreignField: 'channel',
+                as: 'subscribers',
+            },
+        },
+        {
+            $lookup: {
+                from: 'subscriptions',
+                localField: '_id',
+                foreignField: 'subscriber',
+                as: 'subscribed',
+            },
+        },
+        {
+            $addFields: {
+                subscribers: {
+                    $size: '$subscribers',
+                },
+                subscribed: {
+                    $size: '$subscribed',
+                },
+                isSubscribed: {
+                    $cond: {
+                        if: {
+                            $in: ['$subscribed.subscriber', req?.user?._id],
+                            then: true,
+                            else: false,
+                        },
+                    },
+                },
+            },
+        },
+        {
+            $project: {
+                fullName: 1,
+                userName: 1,
+                subscribers: 1,
+                subscribed: 1,
+                isSubscribed: 1,
+                avatar: 1,
+                coverImage: 1,
+                email: 1,
+            },
+        },
+    ]);
+
+    if (!channels?.length) throw new ApiError(404, 'Channel oes not exist');
+
+    res.status(200).json(new ApiResponse(200, channels[0], 'Channel fetched successfully'));
+});
