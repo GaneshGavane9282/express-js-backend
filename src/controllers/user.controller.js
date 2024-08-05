@@ -256,7 +256,6 @@ const updateAvatarCoverImage = (profileType) =>
         );
     });
 
-
 export const updateAvatar = updateAvatarCoverImage('avatar');
 
 export const updateCover = updateAvatarCoverImage('coverImage');
